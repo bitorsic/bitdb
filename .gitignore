@@ -1,2 +1,5 @@
 # executable
 bitdb
+
+# obj files
+*.o
