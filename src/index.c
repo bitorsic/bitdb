@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "../include/utils.h"
 
 #define ORDER 4
 #define MAX_KEYS (ORDER - 1)
@@ -38,6 +39,14 @@ struct Node* initNode() {
 	return node;
 }
 
+void initRoot() {
+	root = initNode();
+}
+
+void freeRoot() {
+	free(root);
+}
+
 void printTree(struct Node* root, int depth) {
 	if (root == NULL) {
         return;
@@ -70,37 +79,21 @@ void insertKeyInNode(int key, struct Node* node) {
 	if (node->keyCount == 0) {
 		node->keys[0] = key;
 	} else if (node->keyCount < MAX_KEYS) {
-		// use binary search
-		int* left = &node->keys[0];
-		int* right = &node->keys[node->keyCount - 1];
-
-		while (left <= right) {
-			int* mid = left + (right - left) / 2; // pointer arithmetics
-
-			if (*mid == key) {
-				printf("Cannot insert %d as it is already present\n", key);
-				return;
-			} else if (*mid < key) {
-				left = mid + 1;
-			} else {
-				right = mid - 1;
-			}
+		int* findResult;
+		
+		findResult = findIndexForKey(key, node->keys, node->keyCount);
+		if (findResult[1] == 1) {
+			printf("Cannot insert %d as it is already present\n", key);
+			return;
 		}
 
-		// left is the index at which to be inserted
-		int* index = left;
+		int index = findResult[0];
 
-		// shift all others to right and insert
-		right = &node->keys[node->keyCount];
-		left = right - 1;
+		insertKeyAtIndex(key, index, node->keys, node->keyCount);
 
-		while (left >= index) {
-			*right = *left;
-			right--; left--;
-		}
-
-		// insert the given key at the index
-		*index = key;
+		free(findResult);
+	} else {
+		// TODO: write logic to split tree
 	}
 
 	node->keyCount++;
@@ -109,21 +102,11 @@ void insertKeyInNode(int key, struct Node* node) {
 void insertKeyInTree(int key) {
 	if (root->isLeaf) {
 		insertKeyInNode(key, root);
+	} else {
+		// TODO: write logic to traverse until leaf node arrives
 	}
 }
 
-int main() {
-	root = initNode();
-
-	insertKeyInTree(10);
-	insertKeyInTree(30);
-	insertKeyInTree(20);
-
-	// for (int i = 0;i < MAX_KEYS; i++) {
-	// 	printf("%d ", root->keys[i]);
-	// }
-
+void printEntireTree() {
 	printTree(root, 0);
-
-	return 0;
 }

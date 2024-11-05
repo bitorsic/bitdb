@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -g
 
 # Source files
-SRC = main.c
+SRC = src/main.c src/index.c src/utils.c
 
 # Object files (replace .c with .o in SRC)
 OBJ = $(SRC:.c=.o)
