@@ -47,17 +47,36 @@ struct Node* fetchOrCreateParentNode(struct Node* node) {
 		return root;
 	}
 		
-	// TODO: write logic to find the parent node
+	// find the parent node
+	struct Node* parent;
+	struct Node* tempNode = root;
 
-	return NULL;
+	// using the middle element for efficiency
+	int key = node->keys[node->keyCount / 2];
+
+	// traverse through the tree until node with the key is reached
+	int* findResult;
+
+	while (tempNode != node) {
+		findResult = findIndexForKey(key, tempNode->keys, tempNode->keyCount);
+		int index = findResult[0];
+
+		parent = tempNode;
+		tempNode = tempNode->children[index];
+	}
+	
+	free(findResult); free(tempNode);
+	
+	return parent;
 }
 
-void insertKeyInNode(int key, struct Node* node) {
+// returns index at which the key was inserted
+int insertKeyInNode(int key, struct Node* node) {
 	// base case - empty node
 	if (node->keyCount == 0) {
 		node->keys[0] = key;
 		node->keyCount++;
-		return;
+		return 0;
 	}
 
 	// firstly, check if the key already exists
@@ -65,8 +84,7 @@ void insertKeyInNode(int key, struct Node* node) {
 	
 	findResult = findIndexForKey(key, node->keys, node->keyCount);
 	if (findResult[1] == 1) {
-		printf("Cannot insert %d as it is already present\n", key);
-		free(findResult); return;
+		free(findResult); return -1;
 	}
 
 	int index = findResult[0]; // key should be inserted here
@@ -75,7 +93,7 @@ void insertKeyInNode(int key, struct Node* node) {
 	if (node->keyCount < MAX_KEYS) {
 		insertKeyAtIndex(key, index, node->keys, node->keyCount);
 		node->keyCount++;
-		return;
+		return index;
 	}
 
 	// here, node->keyCount = MAX_KEYS
@@ -83,7 +101,7 @@ void insertKeyInNode(int key, struct Node* node) {
 	
 	// insert the key in a temp sorted array
 	int tempArray[ORDER];
-	memcpy(tempArray, node->keys, 3 * sizeof(int));
+	memcpy(tempArray, node->keys, MAX_KEYS * sizeof(int));
 	insertKeyAtIndex(key, index, tempArray, ORDER); // since we already know the index
 
 	// set the index to where to split from
@@ -91,7 +109,7 @@ void insertKeyInNode(int key, struct Node* node) {
 
 	// insert the key in the parent
 	struct Node* parent = fetchOrCreateParentNode(node);
-	insertKeyInNode(tempArray[index], parent);
+	int parentIndex = insertKeyInNode(tempArray[index], parent);
 
 	// modify the current node as the left child
 	node->keyCount = index; // since we wanna copy until (index - 1)
@@ -99,12 +117,15 @@ void insertKeyInNode(int key, struct Node* node) {
 
 	// now for the right child
 	int rightKeyCount = MAX_KEYS - index;
+	printEntireTree();
 	struct Node* rightChild = initNode();
 	rightChild->keyCount = rightKeyCount;
 	memcpy(rightChild->keys, &tempArray[index+1], rightKeyCount * sizeof(int));
 
 	// add the rightChild to the parent
-	parent->children[1] = rightChild; // TODO: insert the child at the correct index
+	parent->children[parentIndex + 1] = rightChild; // TODO: insert the child at the correct index
+
+	return parentIndex;
 }
 
 void printTree(struct Node* root, int depth) {
@@ -146,8 +167,9 @@ void freeRoot() {
 }
 
 void insertKeyInTree(int key) {
-	// traverse until leaf node arrives
 	struct Node* node = root;
+
+	// traverse until leaf node arrives
 	while (!node->isLeaf) {
 		// find index of key which is *just* greater than the given key
 		int* findResult;
@@ -163,7 +185,10 @@ void insertKeyInTree(int key) {
 		free(findResult);
 	}
 
-	insertKeyInNode(key, node);
+	int index = insertKeyInNode(key, node);
+	if (index == -1) {
+		printf("Cannot insert %d as it is already present\n", key);
+	}
 }
 
 void printEntireTree() {
