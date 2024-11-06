@@ -65,7 +65,7 @@ struct Node* fetchOrCreateParentNode(struct Node* node) {
 		tempNode = tempNode->children[index];
 	}
 	
-	free(findResult); free(tempNode);
+	free(findResult);
 	
 	return parent;
 }
@@ -117,13 +117,13 @@ int insertKeyInNode(int key, struct Node* node) {
 
 	// now for the right child
 	int rightKeyCount = MAX_KEYS - index;
-	printEntireTree();
 	struct Node* rightChild = initNode();
 	rightChild->keyCount = rightKeyCount;
 	memcpy(rightChild->keys, &tempArray[index+1], rightKeyCount * sizeof(int));
 
 	// add the rightChild to the parent
-	parent->children[parentIndex + 1] = rightChild; // TODO: insert the child at the correct index
+	parent->children[parentIndex + 1] = rightChild;
+	// TODO: insert the child at the correct index of correct tree
 
 	return parentIndex;
 }
@@ -135,7 +135,7 @@ void printTree(struct Node* root, int depth) {
 
 	// space before to denote the level
     for (int i = 0; i < depth; i++) {
-        printf(" ");
+        printf("  ");
     }
 
 	// printing keys
