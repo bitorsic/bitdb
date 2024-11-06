@@ -66,7 +66,7 @@ void insertKeyInNode(int key, struct Node* node) {
 	findResult = findIndexForKey(key, node->keys, node->keyCount);
 	if (findResult[1] == 1) {
 		printf("Cannot insert %d as it is already present\n", key);
-		return;
+		free(findResult); return;
 	}
 
 	int index = findResult[0]; // key should be inserted here
@@ -146,13 +146,24 @@ void freeRoot() {
 }
 
 void insertKeyInTree(int key) {
-	// base case
-	if (root->isLeaf) {
-		insertKeyInNode(key, root);
-		return;
+	// traverse until leaf node arrives
+	struct Node* node = root;
+	while (!node->isLeaf) {
+		// find index of key which is *just* greater than the given key
+		int* findResult;
+
+		findResult = findIndexForKey(key, node->keys, node->keyCount);
+		if (findResult[1] == 1) {
+			printf("Cannot insert %d as it is already present\n", key);
+			free(findResult); return;
+		}
+		int index = findResult[0];
+		node = node->children[index];
+		
+		free(findResult);
 	}
 
-	// TODO: write logic to traverse until leaf node arrives
+	insertKeyInNode(key, node);
 }
 
 void printEntireTree() {
