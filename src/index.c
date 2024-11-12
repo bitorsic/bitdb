@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "../include/utils.h"
+#include "../include/index.h"
 
 #define ORDER 4
 #define MAX_KEYS (ORDER - 1)
@@ -15,6 +16,9 @@ struct Node {
 	int keyCount;
 	bool isLeaf;
 };
+
+// function definition
+int insertKeyInNode(int key, struct Node* node);
 
 // declaring the root node here
 struct Node* root = NULL;
@@ -70,6 +74,43 @@ struct Node* fetchOrCreateParentNode(struct Node* node) {
 	return parent;
 }
 
+// returns the index at which the parent was inserted
+int splitNode(struct Node* node, int* tempArray) {
+	// set the index to where to split from
+	int index = ORDER / 2;
+
+	// insert the key in the parent
+	struct Node* parent = fetchOrCreateParentNode(node);
+	int parentIndex = insertKeyInNode(tempArray[index], parent);
+
+	// modify the current node as the left child
+	node->keyCount = index; // since we wanna copy until (index - 1)
+	memcpy(node->keys, tempArray, index * sizeof(int));
+
+	// now for the right child
+	int rightKeyCount = MAX_KEYS - index;
+	struct Node* rightChild = initNode();
+	rightChild->keyCount = rightKeyCount;
+	memcpy(rightChild->keys, &tempArray[index+1], rightKeyCount * sizeof(int));
+
+	// shift children to right if needed
+	for (int i = MAX_KEYS; i > parentIndex; i--) {
+		// traverse until i-1 doesn't have null
+		if (parent->children[i-1] == NULL) {
+			continue;
+		}
+
+		// shift right
+		parent->children[i] = parent->children[i-1];
+	}
+
+	// add the rightChild to the parent
+	parent->children[parentIndex + 1] = rightChild;
+	// TODO: insert the child at the correct index of correct tree
+
+	return parentIndex;
+}
+
 // returns index at which the key was inserted
 int insertKeyInNode(int key, struct Node* node) {
 	// base case - empty node
@@ -104,26 +145,7 @@ int insertKeyInNode(int key, struct Node* node) {
 	memcpy(tempArray, node->keys, MAX_KEYS * sizeof(int));
 	insertKeyAtIndex(key, index, tempArray, ORDER); // since we already know the index
 
-	// set the index to where to split from
-	index = ORDER / 2;
-
-	// insert the key in the parent
-	struct Node* parent = fetchOrCreateParentNode(node);
-	int parentIndex = insertKeyInNode(tempArray[index], parent);
-
-	// modify the current node as the left child
-	node->keyCount = index; // since we wanna copy until (index - 1)
-	memcpy(node->keys, tempArray, index * sizeof(int));
-
-	// now for the right child
-	int rightKeyCount = MAX_KEYS - index;
-	struct Node* rightChild = initNode();
-	rightChild->keyCount = rightKeyCount;
-	memcpy(rightChild->keys, &tempArray[index+1], rightKeyCount * sizeof(int));
-
-	// add the rightChild to the parent
-	parent->children[parentIndex + 1] = rightChild;
-	// TODO: insert the child at the correct index of correct tree
+	int parentIndex = splitNode(node, tempArray);
 
 	return parentIndex;
 }
