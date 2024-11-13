@@ -5,7 +5,7 @@
 #include "../include/utils.h"
 #include "../include/index.h"
 
-#define ORDER 4
+#define ORDER 5
 #define MAX_KEYS (ORDER - 1)
 #define MIN_KEYS (ORDER / 2)
 
@@ -70,12 +70,21 @@ struct Node* fetchParentNode(struct Node* node) {
 	return parent;
 }
 
-// only leaf nodes can be split using this function
-void splitNode(struct Node* node, int* tempArray) {
-	if (node->isLeaf == false) {
-		printf("splitNode() was wrongfully called on non-leaf node\n");
+// if leaf node, only provide node and tempArray
+// if non-leaf node, provide the leftover last child as well
+void splitNode(struct Node* node, int* tempArray, struct Node* lastChild) {
+	if (node->isLeaf == false && lastChild == NULL) {
+		printf("splitNode(): lastChild was not provided for a non-leaf node\n");
 		exit(1);
 	}
+
+	if (node->isLeaf == true && lastChild != NULL) {
+		printf("splitNode(): lastChild was not NULL for a leaf node\n");
+		exit(1);
+	}
+	
+	// flag to keep track if it was a leaf node
+	bool wasLeaf = node->isLeaf;
 
 	// set the index to where to split from
 	int index = ORDER / 2;
@@ -98,6 +107,19 @@ void splitNode(struct Node* node, int* tempArray) {
 	rightChild->keyCount = rightKeyCount;
 	memcpy(rightChild->keys, &tempArray[index+1], rightKeyCount * sizeof(int));
 
+	if (!wasLeaf) {
+		// allocate children to the left child
+		leftChild->isLeaf = false;
+		memcpy(leftChild->children, node->children, (index + 1) * sizeof(struct Node*));
+
+		// now for the right child
+		rightChild->isLeaf = false;
+		memcpy(rightChild->children, &node->children[index+1], (MAX_KEYS - index) * sizeof(struct Node*));
+
+		// for the last child
+		rightChild->children[MAX_KEYS-index] = lastChild;
+	}
+
 	// attach the children
 	node->children[0] = leftChild;
 	node->children[1] = rightChild;
@@ -111,9 +133,15 @@ int insertNodeInNode(struct Node* node, struct Node* to) {
 		exit(1);
 	}
 
+	// destructuring the node to be inserted
+	int key = node->keys[0];
+	struct Node* leftChild = node->children[0];
+	struct Node* rightChild = node->children[1];
+	free(node);
+
 	// find index
 	int* findResult;
-	findResult = findIndexForKey(node->keys[0], to->keys, to->keyCount);
+	findResult = findIndexForKey(key, to->keys, to->keyCount);
 	if (findResult[1] == 1) {
 		free(findResult); return -1;
 	}
@@ -122,7 +150,7 @@ int insertNodeInNode(struct Node* node, struct Node* to) {
 
 	if (to->keyCount < MAX_KEYS) {
 		// insert the node's key
-		insertKeyAtIndex(node->keys[0], index, to->keys, to->keyCount);
+		insertKeyAtIndex(key, index, to->keys, to->keyCount);
 
 		// shift children to right if needed
 		for (int i = to->keyCount + 1; i > index; i--) {
@@ -130,17 +158,54 @@ int insertNodeInNode(struct Node* node, struct Node* to) {
 		}
 
 		// insert children
-		to->children[index] = node->children[0]; // left child
-		to->children[index+1] = node->children[1]; // right child
+		to->children[index] = leftChild;
+		to->children[index+1] = rightChild;
 		
 		to->keyCount++;
-	} else {
-		// TODO: insert the children at the correct index of correct tree
-		printf("insertNodeInNode(): parent node is full\n");
-		exit(1);
+
+		return index;
 	}
 
-	free(node); return index;
+	// here, the node is already full
+
+	// insert the key in a temp sorted array
+	int tempArray[ORDER];
+	memcpy(tempArray, to->keys, MAX_KEYS * sizeof(int));
+	insertKeyAtIndex(key, index, tempArray, ORDER); // since we already know the index
+
+	// arrange the children post-insertion, with the last child being stored separately
+	struct Node* lastChild;
+
+	// directly replace the left child
+	to->children[index] = leftChild;
+
+	if (index == MAX_KEYS) { // base case - node is to be inserted at the end
+		lastChild = rightChild;
+	} else {
+		lastChild = to->children[MAX_KEYS];
+
+		// traverse from 2nd last child to the index+1'th child, shifting them right
+		for (int i = MAX_KEYS; i > index + 1; i--) {
+			to->children[i] = to->children[i-1];
+		}
+
+		// lastly, attach the right child
+		to->children[index+1] = rightChild;
+	}
+
+	splitNode(to, tempArray, lastChild);
+
+	// insert the split node into its parent
+	struct Node* parent = fetchParentNode(to);
+	if (parent == NULL) { // since the node itself is the root
+		return index;
+	}
+	
+	index = insertNodeInNode(node, parent);
+	
+	to->keyCount++;
+
+	return index;
 }
 
 // returns index at which the key was inserted
@@ -177,7 +242,7 @@ int insertKeyInNode(int key, struct Node* node) {
 	memcpy(tempArray, node->keys, MAX_KEYS * sizeof(int));
 	insertKeyAtIndex(key, index, tempArray, ORDER); // since we already know the index
 
-	splitNode(node, tempArray);
+	splitNode(node, tempArray, NULL);
 
 	// insert the split node into its parent
 	struct Node* parent = fetchParentNode(node);
